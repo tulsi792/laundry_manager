@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Laundry Manager</title>
+    <style>
+       body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+
+    background: url('https://images.unsplash.com/photo-1581579186986-1c0c3c1e5b2b') no-repeat center center/cover;
+    
+    height: 100vh;
+}
+
+        header {
+            background: #2d3436;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 22px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background: #0984e3;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0769b5;
+        }
+
+        .order {
+            border-left: 5px solid #0984e3;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            background: #fff;
+        }
+
+        .status {
+            float: right;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .btn-small {
+            width: auto;
+            padding: 5px 10px;
+            margin-top: 8px;
+            margin-right: 5px;
+            font-size: 12px;
+        }
+
+        .delete {
+            background: #d63031;
+        }
+
+        #loginBox {
+            width: 300px;
+            margin: 120px auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="loginBox" class="card">
+    <h2>Login</h2>
+    <input id="username" value="admin">
+    <input id="password" type="password" value="1234">
+    <button type="button" onclick="login()">Login</button>
+</div>
+
+<div id="app" style="display:none;">
+    <header>Laundry Manager</header>
+
+    <div class="container">
+
+        <div class="card">
+            <h3>New Order</h3>
+            <input id="name" placeholder="Customer Name">
+            <input id="phone" placeholder="Phone">
+            <select id="garment">
+                <option value="shirt">Shirt</option>
+                <option value="pants">Pants</option>
+            </select>
+            <input id="qty" type="number" value="1">
+            <button type="button" onclick="createOrder()">Create Order</button>
+        </div>
+
+        <div class="card">
+            <h3>Orders</h3>
+            <button type="button" onclick="refreshData()">Refresh</button>
+            <hr>
+            <div id="orders"></div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+const API = "http://localhost:5000/api";
+let authHeader = {};
+
+function getHeaders() {
+    return {
+        "Content-Type": "application/json",
+        "username": authHeader.username,
+        "password": authHeader.password
+    };
+}
+
+function login() {
+    authHeader = {
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value
+    };
+
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("app").style.display = "block";
+
+    refreshData();
+}
+
+async function refreshData() {
+    const res = await fetch(API + "/orders", { headers: getHeaders() });
+    const data = await res.json();
+
+    const div = document.getElementById("orders");
+    div.innerHTML = "";
+
+    data.forEach(o => {
+        div.innerHTML += `
+        <div class="order">
+            <span class="status">${o.status}</span>
+            <b>${o.customer_name}</b><br>
+            ₹${o.total}
+
+            <div>
+                <button class="btn-small" onclick="updateOrder('${o._id}','PROCESSING')">Processing</button>
+                <button class="btn-small" onclick="updateOrder('${o._id}','READY')">Ready</button>
+                <button class="btn-small" onclick="updateOrder('${o._id}','DELIVERED')">Delivered</button>
+                <button class="btn-small delete" onclick="deleteOrder('${o._id}')">Delete</button>
+            </div>
+        </div>`;
+    });
+}
+
+async function createOrder() {
+    await fetch(API + "/orders", {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({
+            customer_name: document.getElementById("name").value,
+            phone: document.getElementById("phone").value,
+            garments: [{
+                garment: document.getElementById("garment").value,
+                quantity: parseInt(document.getElementById("qty").value)
+            }]
+        })
+    });
+    refreshData();
+}
+
+async function updateOrder(id, status) {
+    await fetch(`${API}/orders/${id}`, {
+        method: "PUT",
+        headers: getHeaders(),
+        body: JSON.stringify({ status })
+    });
+    refreshData();
+}
+
+async function deleteOrder(id) {
+    await fetch(`${API}/orders/${id}`, {
+        method: "DELETE",
+        headers: getHeaders()
+    });
+    refreshData();
+}
+</script>
+
+</body>
+</html>
